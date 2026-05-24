@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行程助手</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F0; --surface: #FFFFFF; --surface2: #F0EEE9;
+    --border: rgba(0,0,0,0.07); --border2: rgba(0,0,0,0.12);
+    --text: #1a1a1a; --text2: #666660; --text3: #AAAAAA;
+    --accent: #5B4FCF; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  #authScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 1.5rem; padding: 2rem; }
+  .auth-logo { font-size: 52px; }
+  .auth-title { font-size: 26px; font-weight: 700; }
+  .auth-sub { color: var(--text2); font-size: 13px; text-align: center; line-height: 1.7; max-width: 300px; }
+  .auth-btn { display: flex; align-items: center; gap: 10px; background: var(--surface); color: #3c4043; border: 1px solid var(--border2); border-radius: 8px; padding: 11px 22px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: box-shadow .2s; }
+  .auth-btn:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.14); }
+  .auth-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .auth-status { font-size: 12px; color: var(--text3); min-height: 18px; text-align: center; }
+
+  #app { display: none; flex-direction: column; height: 100vh; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 52px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .topbar-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .topbar-logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .user-pill { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px 4px 4px; font-size: 12px; color: var(--text2); cursor: pointer; }
+  .user-pill:hover { background: #e8e5df; }
+  .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; overflow: hidden; }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .cal-wrap { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; }
+  .cal-month { font-size: 16px; font-weight: 700; }
+  .cal-nav { display: flex; gap: 6px; }
+  .nav-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border2); color: var(--text2); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+  .nav-btn:hover { background: var(--surface2); }
+  .weekdays { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; font-size: 11px; color: var(--text3); font-weight: 500; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .day-cell { min-height: 64px; padding: 4px; border-radius: var(--radius-sm); border: 1px solid transparent; display: flex; flex-direction: column; transition: background .1s; }
+  .day-cell:hover { background: var(--surface); border-color: var(--border2); }
+  .day-cell.other-month .dn { opacity: .3; }
+  .day-cell.today { background: #EEEAFB; border-color: rgba(91,79,207,0.25); }
+  .day-cell.today .dn { color: var(--accent); font-weight: 700; }
+  .dn { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
+  .ev-pip { font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-bottom: 1px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; padding-top: .75rem; border-top: 1px solid var(--border); }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .leg-dot { width: 7px; height: 7px; border-radius: 2px; }
+
+  .sidebar { width: 320px; border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; flex-shrink: 0; }
+  @media (max-width: 680px) { .main { flex-direction: column; } .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 58vh; overflow-y: auto; } }
+  .sb-section { padding: 1rem; border-bottom: 1px solid var(--border); }
+  .sb-label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  .type-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .chip { font-size: 11px; padding: 3px 9px; border-radius: 20px; cursor: pointer; border: 1px solid transparent; transition: all .15s; font-family: inherit; }
+  .chip.active { border-color: currentColor; font-weight: 500; }
+  textarea { width: 100%; height: 95px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: 'Noto Sans TC', sans-serif; font-size: 12px; padding: 8px; resize: none; line-height: 1.6; }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  textarea::placeholder { color: var(--text3); }
+  .ai-btn { width: 100%; padding: 9px; margin-top: 8px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; transition: opacity .15s; }
+  .ai-btn:hover { opacity: .88; }
+  .ai-btn:disabled { opacity: .4; cursor: default; }
+  .result { margin-top: 8px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.7; display: none; word-break: break-all; }
+  .result.show { display: block; }
+  .result.ok { background: #EDFAF2; color: #1E7A45; border: 1px solid #A8DFC0; }
+  .result.warn { background: #FFF8E6; color: #8A5C00; border: 1px solid #F5D88A; }
+  .result.err { background: #FEF0F0; color: #C0392B; border: 1px solid #F5AAAA; }
+  .ev-list { flex: 1; overflow-y: auto; padding: 1rem; }
+  .ev-group { margin-bottom: 1rem; }
+  .ev-group-label { font-size: 10px; color: var(--text3); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+  .ev-row { display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; border-radius: var(--radius-sm); margin-bottom: 3px; border: 1px solid transparent; }
+  .ev-row-body { flex: 1; min-width: 0; }
+  .ev-row-title { font-size: 12px; font-weight: 500; }
+  .ev-row-meta { font-size: 10px; color: var(--text2); margin-top: 1px; }
+  .empty { text-align: center; color: var(--text3); padding: 2rem 0; font-size: 12px; line-height: 2; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="authScreen">
+  <div class="auth-logo">📅</div>
+  <div class="auth-title">行程助手</div>
+  <div class="auth-sub">登入 Google 帳號，AI 幫你解析日期並直接加入 Google Calendar</div>
+  <button class="auth-btn" id="signInBtn">
+    <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    以 Google 帳號登入
+  </button>
+  <div class="auth-status" id="authStatus"></div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo"><div class="dot"></div>行程助手</div>
+    <div class="user-pill" id="userPill" title="點擊登出">
+      <div class="user-avatar" id="userAvatar"></div>
+      <span id="userName"></span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button class="nav-btn" id="prevBtn">‹</button>
+          <button class="nav-btn" id="nextBtn">›</button>
+        </div>
+        <div class="cal-month" id="calMonth"></div>
+      </div>
+      <div class="weekdays"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+      <div class="days-grid" id="daysGrid"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="sidebar">
+      <div class="sb-section">
+        <div class="sb-label">活動類型</div>
+        <div class="type-chips" id="typeChips"></div>
+        <div class="sb-label">輸入日期（自然語言）</div>
+        <textarea id="aiInput" placeholder="例如：
+每週二、四排練，6/3到7/10
+6/15 下午2點課程
+週末演出：6/21、6/22"></textarea>
+        <div class="result" id="result"></div>
+        <button class="ai-btn" id="aiBtn">✦ AI 解析並加入 Google Calendar</button>
+      </div>
+      <div class="ev-list" id="evList">
+        <div class="empty">尚無行程<br><span style="font-size:10px">成功加入的行程會顯示在這裡</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID = '155903926914-1lr98epa8kp0rukt1egvv2geg9l5ub50.apps.googleusercontent.com';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybclapxZiI-SWmS3gNDzlrRX_n-Ya-D97cQ8KlhvO3kdUebAGHy6CCXm-0FDEwJ0Vpiw/exec';
+const SCOPE = 'openid email profile';
+const REDIRECT_URI = location.origin + location.pathname;
+
+const TYPES = [
+  {id:'rehearsal', label:'排練', color:'#5B4FCF', bg:'#EEEAFB', text:'#3D2FA8'},
+  {id:'performance', label:'演出', color:'#C94F1A', bg:'#FDEEE8', text:'#A03A10'},
+  {id:'meeting', label:'會議', color:'#1A7A4A', bg:'#E6F5EC', text:'#145C38'},
+  {id:'class', label:'課程', color:'#1466A8', bg:'#E6F1FB', text:'#0D4E85'},
+  {id:'other', label:'其他', color:'#8A6200', bg:'#FBF4E0', text:'#6B4C00'},
+  {id:'personal', label:'個人', color:'#A02060', bg:'#FAEAF2', text:'#7A1848'},
+];
+let events = [], selectedType = 'rehearsal', curYear, curMonth;
+let userProfile = null;
+
+// ── OAuth redirect 流程 ──────────────────────────────
+function startOAuth() {
+  const state = Math.random().toString(36).slice(2);
+  sessionStorage.setItem('oauth_state', state);
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'token',
+    scope: SCOPE,
+    state,
+    prompt: 'select_account',
+  });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+}
+
+async function handleOAuthCallback(hash) {
+  const params = new URLSearchParams(hash.slice(1));
+  const token = params.get('access_token');
+  const state = params.get('state');
+  if (!token) return false;
+  // 清掉 hash 避免 token 留在網址列
+  history.replaceState(null, '', location.pathname);
+  // 取使用者資訊
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const info = await res.json();
+    userProfile = { name: info.name, email: info.email, picture: info.picture, token };
+    sessionStorage.setItem('user_profile', JSON.stringify(userProfile));
+  } catch(e) {
+    userProfile = { name: '', email: '', token };
+  }
+  return true;
+}
+
+function loadProfile() {
+  const saved = sessionStorage.getItem('user_profile');
+  if (saved) { userProfile = JSON.parse(saved); return true; }
+  return false;
+}
+
+function signOut() {
+  sessionStorage.removeItem('user_profile');
+  userProfile = null;
+  location.reload();
+}
+
+// ── 初始化 ────────────────────────────────────────────
+async function init() {
+  // 1. 先看 hash 裡有沒有 token（OAuth redirect 回來）
+  if (location.hash && location.hash.includes('access_token')) {
+    const ok = await handleOAuthCallback(location.hash);
+    if (ok) { showApp(); return; }
+  }
+  // 2. 看 sessionStorage 有沒有記住的登入
+  if (loadProfile()) { showApp(); return; }
+  // 3. 顯示登入畫面
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('authStatus').textContent = '';
+}
+
+document.getElementById('signInBtn').onclick = () => {
+  document.getElementById('authStatus').textContent = '跳轉至 Google 登入...';
+  startOAuth();
+};
+
+document.getElementById('userPill').onclick = () => {
+  if (confirm('確定要登出嗎？')) signOut();
+};
+
+// ── 顯示主畫面 ────────────────────────────────────────
+function showApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  if (userProfile) {
+    const av = document.getElementById('userAvatar');
+    if (userProfile.picture) av.innerHTML = `<img src="${userProfile.picture}" alt="">`;
+    else av.textContent = (userProfile.name || userProfile.email || 'U')[0];
+    document.getElementById('userName').textContent = userProfile.name || userProfile.email || '已登入';
+  }
+  const now = new Date();
+  curYear = now.getFullYear(); curMonth = now.getMonth();
+  renderTypeChips(); renderCalendar(); renderEvList();
+}
+
+// ── UI renders ────────────────────────────────────────
+function renderTypeChips() {
+  const wrap = document.getElementById('typeChips'); wrap.innerHTML = '';
+  TYPES.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (selectedType === t.id ? ' active' : '');
+    b.textContent = t.label;
+    b.style.cssText = `background:${t.bg};color:${t.text};border-color:${selectedType===t.id?t.color:'transparent'}`;
+    b.onclick = () => { selectedType = t.id; renderTypeChips(); };
+    wrap.appendChild(b);
+  });
+}
+
+function renderCalendar() {
+  const months = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  document.getElementById('calMonth').textContent = `${curYear} 年 ${months[curMonth]}`;
+  const grid = document.getElementById('daysGrid'); grid.innerHTML = '';
+  const startDay = new Date(curYear, curMonth, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  const prevDays = new Date(curYear, curMonth, 0).getDate();
+  const today = new Date();
+  let cells = [];
+  for (let i = startDay-1; i >= 0; i--) cells.push({d: prevDays-i, cur: false});
+  for (let d = 1; d <= daysInMonth; d++) cells.push({d, cur: true});
+  while (cells.length % 7 !== 0) cells.push({d: cells.length-startDay-daysInMonth+1, cur: false});
+  cells.forEach(({d, cur}) => {
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (cur ? '' : ' other-month');
+    const ds = cur ? `${curYear}-${String(curMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
+    if (cur && today.getFullYear()===curYear && today.getMonth()===curMonth && today.getDate()===d) cell.classList.add('today');
+    const dn = document.createElement('div'); dn.className = 'dn'; dn.textContent = d;
+    cell.appendChild(dn);
+    if (ds) events.filter(e=>e.date===ds).slice(0,3).forEach(ev => {
+      const t = TYPES.find(x=>x.id===ev.type)||TYPES[4];
+      const pip = document.createElement('div'); pip.className = 'ev-pip';
+      pip.style.cssText = `background:${t.bg};color:${t.text}`;
+      pip.textContent = ev.title;
+      cell.appendChild(pip);
+    });
+    grid.appendChild(cell);
+  });
+  const leg = document.getElementById('legend'); leg.innerHTML = '';
+  const used = new Set(events.map(e=>e.type));
+  TYPES.filter(t=>used.has(t.id)).forEach(t => {
+    const el = document.createElement('div'); el.className = 'leg-item';
+    el.innerHTML = `<div class="leg-dot" style="background:${t.color}"></div>${t.label}`;
+    leg.appendChild(el);
+  });
+}
+
+function renderEvList() {
+  const sec = document.getElementById('evList');
+  if (!events.length) { sec.innerHTML = '<div class="empty">尚無行程<br><span style="font-size:10px">成功加入的行程會顯示在這裡</span></div>'; return; }
+  const grouped = {};
+  [...events].sort((a,b)=>a.date.localeCompare(b.date)).forEach(ev => {
+    if (!grouped[ev.date]) grouped[ev.date] = [];
+    grouped[ev.date].push(ev);
+  });
+  sec.innerHTML = '';
+  const dayNames = ['日','一','二','三','四','五','六'];
+  Object.entries(grouped).forEach(([date, evs]) => {
+    const g = document.createElement('div'); g.className = 'ev-group';
+    const d = new Date(date + 'T00:00:00');
+    const lbl = document.createElement('div'); lbl.className = 'ev-group-label';
+    lbl.textContent = `${d.getMonth()+1}月${d.getDate()}日（${dayNames[d.getDay()]}）`;
+    g.appendChild(lbl);
+    evs.forEach(ev => {
+      const t = TYPES.find(x=>x.id===ev.type)||TYPES[4];
+      const row = document.createElement('div'); row.className = 'ev-row';
+      row.style.cssText = `background:${t.bg};border-color:${t.color}22`;
+      row.innerHTML = `<div class="ev-row-body"><div class="ev-row-title" style="color:${t.text}">${ev.title}</div><div class="ev-row-meta">${t.label}${ev.time?' · '+ev.time:''}</div></div>`;
+      g.appendChild(row);
+    });
+    sec.appendChild(g);
+  });
+}
+
+document.getElementById('prevBtn').onclick = () => { curMonth--; if(curMonth<0){curMonth=11;curYear--;} renderCalendar(); };
+document.getElementById('nextBtn').onclick = () => { curMonth++; if(curMonth>11){curMonth=0;curYear++;} renderCalendar(); };
+
+// ── AI 匯入 ───────────────────────────────────────────
+function showResult(msg, type) {
+  const rb = document.getElementById('result');
+  rb.className = 'result show ' + type; rb.innerHTML = msg;
+}
+
+document.getElementById('aiBtn').onclick = async () => {
+  const btn = document.getElementById('aiBtn');
+  const text = document.getElementById('aiInput').value.trim();
+  if (!text) { showResult('❌ 請先輸入日期內容', 'err'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 解析中...';
+  const existing = events.map(e=>`${e.date} ${e.title}`).join('\n') || '（無）';
+  const typeName = TYPES.find(t=>t.id===selectedType)?.label || '行程';
+  try {
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ text, typeName, eventType: selectedType, existing })
+    });
+    if (!resp.ok) throw new Error(`伺服器回應 ${resp.status}`);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || '未知錯誤');
+    (data.importedEvents || []).forEach(ev => {
+      events.push({ id: Date.now()+Math.random(), date: ev.date, title: ev.title, time: ev.time, type: selectedType });
+    });
+    let msg = `<strong>${data.summary}</strong><br>✅ 已加入 Google Calendar ${data.imported} 筆`;
+    if (data.skipped) msg += `<br>⚠️ ${data.skipped} 筆與現有行程衝突，未匯入`;
+    showResult(msg, data.hasConflict ? 'warn' : 'ok');
+    renderCalendar(); renderEvList();
+    if (data.imported > 0) document.getElementById('aiInput').value = '';
+  } catch(e) {
+    showResult('❌ ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '✦ AI 解析並加入 Google Calendar';
+};
+
+init();
+</script>
+</body>
+</html>
